@@ -1,20 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Code Paleontology
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/5e84d7dd-6f72-458f-879d-af3328d4b1b3
+Explore the history of any GitHub repository through dramatic AI-generated stories with cartoon illustrations.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js, Bun
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   bun install
+   ```
+
+2. Create `.env.local` with your API keys:
+   ```
+   AI_API_URL=http://your-ai-api-url/v1/chat/completions
+   AI_API_KEY=your-api-key
+   ```
+
+3. Start both frontend and API:
+   ```bash
+   bun run dev:all
+   ```
+
+   Or run them separately:
+   ```bash
+   bun run dev          # Vite frontend on :3000
+   bun run dev:api      # Hono API server on :3003
+   ```
+
+4. Open `http://localhost:3000`
+
+## How It Works
+
+1. Paste a GitHub repo URL
+2. The server fetches repo context (README, issues, PRs, commits) via GitHub API
+3. An AI generates a dramatic 6-slide story about the repo's history
+4. Each slide's scene is illustrated as a cartoon image
+5. Results are displayed in a carousel
