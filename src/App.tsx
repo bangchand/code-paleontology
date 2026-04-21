@@ -5,10 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Github, ChevronRight, Loader2, Sparkles, Code2, Terminal, Info, LayoutGrid, Search, ArrowRight, Share2, Download, CornerDownLeft } from 'lucide-react';
+import { Github, Loader2, ArrowRight, CornerDownLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Carousel,
   CarouselContent,
@@ -16,6 +15,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
+import { useAnalysisStore } from '@/src/store';
 
 type AppState = 'idle' | 'analyzing' | 'complete';
 
@@ -50,102 +50,106 @@ const CODE_SNIPPETS = [
   '// Finalizing result mapping...',
 ];
 
-const MOCK_RESULTS = [
-  {
-    id: 1,
-    url: 'https://picsum.photos/seed/git_arch/1280/720',
-    title: 'Architecture Blueprint',
-    caption: 'Deep dependency graph analysis suggests a highly decoupled micro-service architecture with 94.2% modularity score.',
-  },
-  {
-    id: 2,
-    url: 'https://picsum.photos/seed/git_logic/1280/720',
-    title: 'Logic Integrity',
-    caption: 'Cyclomatic complexity is well-contained. Average nesting depth remains below 3, promoting high readability.',
-  },
-  {
-    id: 3,
-    url: 'https://picsum.photos/seed/git_sec/1280/720',
-    title: 'Security Vectors',
-    caption: 'Entropy analysis of string literals shows no hardcoded secrets or exposed API patterns in the root directory.',
-  },
-  {
-    id: 4,
-    url: 'https://picsum.photos/seed/git_perf/1280/720',
-    title: 'Runtime Efficiency',
-    caption: 'Memory footprint projection: Estimated sub-100MB heap usage for standard operations post-optimization.',
-  },
-];
-
 export default function App() {
-  const [state, setState] = useState<AppState>('idle');
   const [url, setUrl] = useState('');
+  const { results, loading, error, analyze, reset: resetStore } = useAnalysisStore();
 
-  // Force dark mode
   useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
 
+  // Sync loading/error to view state
+  const viewState: AppState = loading ? 'analyzing' : results.length > 0 ? 'complete' : 'idle';
+
   const handleAnalyze = () => {
     if (!url) return;
-    setState('analyzing');
-    // Simulate a request
-    setTimeout(() => {
-      setState('complete');
-    }, 6000); 
+    analyze(url);
   };
 
   const reset = () => {
-    setState('idle');
+    resetStore();
     setUrl('');
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-white selection:text-black overflow-hidden relative">
+    <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black overflow-hidden relative">
       <AnimatePresence mode="wait">
-        {state === 'idle' && (
+        {viewState === 'idle' && (
           <motion.div
             key="idle"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="flex flex-col items-center justify-center min-h-screen p-6"
           >
             <motion.div
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-center space-y-16 max-w-4xl w-full"
+              transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.1 }}
+              className="text-center space-y-12 max-w-3xl w-full"
             >
-              <h1 className="text-[10px] md:text-xs font-mono font-medium tracking-[0.4em] text-white/30 uppercase whitespace-nowrap">
-                Taruh link github disini untuk menjelajahi sejarah repositori
+              {/* Cartoon mascot bubble */}
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                className="flex justify-center mb-4"
+              >
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white flex items-center justify-center shadow-lg shadow-white/10">
+                  <Github size={40} className="text-black" />
+                </div>
+              </motion.div>
+
+              <h1 className="text-lg md:text-2xl font-extrabold tracking-tight text-white/80 leading-relaxed">
+                Taruh link github disini untuk{' '}
+                <span className="bg-white text-black px-3 py-1 rounded-full">
+                  menjelajahi
+                </span>{' '}
+                sejarah repositori
               </h1>
 
-              <div className="w-full max-w-2xl mx-auto">
+              <div className="w-full max-w-xl mx-auto">
                 <div className="relative group">
-                  <Input
-                    type="text"
-                    placeholder="HTTPS://GITHUB.COM/OWNER/REPO"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-                    className="w-full bg-transparent border-t-0 border-x-0 border-b border-white/10 focus:border-white transition-colors text-white h-24 px-0 focus:ring-0 rounded-none text-xl md:text-3xl font-mono placeholder:text-[10px] md:placeholder:text-xs placeholder:text-white/5 uppercase tracking-[0.2em] text-center pr-12"
-                  />
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-focus-within:opacity-40 transition-opacity">
-                    <CornerDownLeft size={20} className="text-white" />
+                  <div className="bg-white/5 rounded-3xl border-2 border-white/10 focus-within:border-white/30 transition-colors p-2">
+                    <Input
+                      type="text"
+                      placeholder="https://github.com/owner/repo"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+                      className="w-full bg-transparent border-0 focus:ring-0 text-white h-14 px-6 rounded-2xl text-base md:text-lg placeholder:text-white/20 text-center"
+                    />
+                  </div>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-focus-within:opacity-40 transition-opacity">
+                    <CornerDownLeft size={18} className="text-white" />
                   </div>
                 </div>
-                <div className="mt-8">
-                  <p className="text-[8px] font-mono text-white/10 uppercase tracking-[0.2em]">
-                    System awaiting repository handshake
-                  </p>
-                </div>
+
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-6 flex justify-center"
+                >
+                  <Button
+                    onClick={handleAnalyze}
+                    disabled={!url}
+                    className="bg-white text-black hover:bg-white/90 rounded-full px-8 h-12 text-sm font-bold tracking-wide uppercase disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-lg shadow-white/10"
+                  >
+                    Analyze
+                    <ArrowRight size={16} className="ml-2" />
+                  </Button>
+                </motion.div>
+
+                <p className="text-[11px] font-semibold text-white/15 mt-6 tracking-wide">
+                  System awaiting repository handshake
+                </p>
               </div>
             </motion.div>
           </motion.div>
         )}
 
-        {state === 'analyzing' && (
+        {viewState === 'analyzing' && (
           <motion.div
             key="analyzing"
             initial={{ opacity: 0 }}
@@ -153,45 +157,32 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black flex flex-col justify-end overflow-hidden z-[60]"
           >
-            {/* The Cinematic "Post-Credit" Code Crawl */}
             <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black z-30 pointer-events-none" />
-            
+
             <div className="relative h-screen flex flex-col items-center">
               <motion.div
                 initial={{ y: '100vh' }}
                 animate={{ y: '-250%' }}
-                transition={{
-                  duration: 35,
-                  ease: "linear",
-                  repeat: Infinity,
-                }}
+                transition={{ duration: 35, ease: 'linear', repeat: Infinity }}
                 className="w-full max-w-2xl px-8 flex flex-col gap-3"
               >
                 {[...Array(8)].map((_, i) => (
                   <div key={i} className="flex flex-col gap-3">
                     {CODE_SNIPPETS.map((snippet, j) => {
-                      const colors = ['#ff00ff', '#00ffff', '#00ff00', '#ffff00', '#ffffff'];
+                      const colors = ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373'];
                       const color = colors[(i + j) % colors.length];
-                      const isGlitchy = Math.random() > 0.92;
-                      const blurAmount = Math.random() > 0.8 ? 'blur-[0.5px]' : 'blur-none';
 
                       return (
-                        <motion.div 
-                          key={`${i}-${j}`} 
-                          animate={isGlitchy ? { 
-                            x: [-1, 1, -0.5, 0],
-                            opacity: [0.6, 1, 0.5, 0.8]
-                          } : {}}
-                          transition={{ duration: 0.15, repeat: isGlitchy ? Infinity : 0 }}
-                          className={`font-mono text-[10px] md:text-sm font-medium tracking-tight ${blurAmount}`}
-                          style={{ 
-                            color: color,
-                            textShadow: `0 0 8px ${color}33`,
-                            marginLeft: `${(j % 6) * 12}px`
+                        <div
+                          key={`${i}-${j}`}
+                          className="font-mono text-[10px] md:text-sm font-medium tracking-tight"
+                          style={{
+                            color,
+                            marginLeft: `${(j % 6) * 12}px`,
                           }}
                         >
                           {snippet}
-                        </motion.div>
+                        </div>
                       );
                     })}
                   </div>
@@ -199,140 +190,131 @@ export default function App() {
               </motion.div>
             </div>
 
-            {/* Bottom Status Text */}
-            <div className="absolute bottom-16 left-0 right-0 z-40 text-center space-y-4">
-              <div className="flex justify-center gap-1 mb-2">
-                {[...Array(3)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{ opacity: [0.2, 1, 0.2] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.3 }}
-                    className="w-1.5 h-1.5 bg-white rounded-full"
-                  />
-                ))}
+            {/* Bottom status - cartoon style */}
+            <div className="absolute bottom-16 left-0 right-0 z-40 text-center space-y-6">
+              <div className="flex justify-center">
+                <div className="bg-white/5 backdrop-blur-md rounded-full px-6 py-4 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <Loader2 size={18} className="text-white animate-spin" />
+                    <span className="text-white font-extrabold text-sm tracking-wide">
+                      Menganalisis Repository...
+                    </span>
+                  </div>
+                </div>
               </div>
-              <p className="text-white font-mono text-xs md:text-sm tracking-[0.5em] uppercase font-bold">
-                Menganalisis Kode...
-              </p>
-              <p className="text-white/20 font-mono text-[9px] tracking-[0.2em] uppercase">
-                System decrypting repository sequences
-              </p>
             </div>
           </motion.div>
         )}
 
-        {state === 'complete' && (
+        {viewState === 'complete' && (
           <motion.div
             key="complete"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
             className="h-screen w-screen bg-black flex flex-col items-center justify-center p-6 md:p-12 overflow-hidden relative"
           >
-            {/* Minimalist Reset Trigger - Floating */}
-            <div className="absolute top-8 right-8 z-50">
-              <Button 
-                variant="ghost" 
-                onClick={reset} 
-                className="text-white/20 hover:text-white hover:bg-white/5 rounded-none font-mono text-[10px] uppercase tracking-[0.3em] h-auto p-2"
+            {/* Reset button - pill shape */}
+            <div className="absolute top-6 right-6 z-50">
+              <Button
+                variant="ghost"
+                onClick={reset}
+                className="text-white/20 hover:text-white hover:bg-white/5 rounded-full font-extrabold text-xs uppercase tracking-wider h-auto px-5 py-2 border border-white/5 hover:border-white/10"
               >
-                [ RESET_SYSTEM ]
+                Reset
               </Button>
             </div>
 
-            {/* Main Visual Display - Fixed Viewport */}
-            <div className="w-full max-w-6xl flex flex-col items-center gap-8 md:gap-12 relative">
-              {/* Repository Identifier - Replaces Title */}
-              <motion.div 
+            <div className="w-full max-w-6xl flex flex-col items-center gap-8 md:gap-10 relative">
+              {/* Repository link - rounded pill */}
+              <motion.div
                 initial={{ y: -10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.2 }}
                 className="text-center"
               >
-                <a 
-                  href={url} 
-                  target="_blank" 
+                <a
+                  href={url}
+                  target="_blank"
                   rel="noreferrer"
-                  className="group inline-flex flex-col items-center gap-2"
+                  className="group inline-flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-full px-5 py-3 transition-all"
                 >
-                  <span className="text-white/20 font-mono text-[10px] uppercase tracking-[0.5em] group-hover:text-white/40 transition-colors">
-                    Source Node Path
-                  </span>
-                  <div className="flex items-center gap-2 text-white/60 group-hover:text-white transition-colors decoration-white/20 underline-offset-4 hover:underline">
-                    <Github size={14} />
-                    <span className="font-mono text-sm tracking-tight truncate max-w-[280px] md:max-w-md lowercase">
-                      {url.replace('https://github.com/', '')}
-                    </span>
-                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                    <Github size={16} className="text-black" />
                   </div>
+                  <span className="font-extrabold text-sm text-white/60 group-hover:text-white tracking-tight truncate max-w-[200px] md:max-w-md">
+                    {url.replace('https://github.com/', '')}
+                  </span>
+                  <ArrowRight size={14} className="text-white/30 group-hover:text-white group-hover:translate-x-1 transition-all" />
                 </a>
               </motion.div>
 
-              <Carousel className="w-full relative" opts={{ align: "start", loop: false }}>
+              <Carousel className="w-full relative" opts={{ align: 'start', loop: false }}>
                 <div className="relative">
                   <CarouselContent>
-                    {MOCK_RESULTS.map((result) => (
-                      <CarouselItem key={result.id}>
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          whileInView={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.8 }}
-                          className="space-y-6 md:space-y-8"
+                    {results.map((result, index) => (
+                      <CarouselItem key={result.index}>
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          transition={{ type: 'spring', stiffness: 200, damping: 20, delay: index * 0.1 }}
+                          className="space-y-6"
                         >
-                          <div className="aspect-[21/9] relative overflow-hidden ring-1 ring-white/10 shadow-2xl shadow-white/5">
-                            <img
-                              src={result.url}
-                              alt={result.title}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover grayscale brightness-50 hover:grayscale-0 hover:brightness-100 transition-all duration-1000 ease-in-out"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                            
-                            <div className="absolute top-4 left-4 flex items-center gap-2">
-                              <span className="bg-white text-black px-2 py-0.5 text-[9px] font-black tracking-widest uppercase">DATA_SET_{result.id}</span>
+                          {/* Compact result card */}
+                          <div className="bg-white/5 rounded-3xl border-2 border-white/10 overflow-hidden max-w-3xl mx-auto">
+                            <div className="relative aspect-video overflow-hidden">
+                              <img
+                                src={result.image_url}
+                                alt={`Analysis ${result.index}`}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+
+                              <div className="absolute bottom-3 left-4">
+                                <h4 className="text-base md:text-lg font-extrabold tracking-tight">
+                                  Slide #{result.index}
+                                </h4>
+                              </div>
                             </div>
-                            
-                            <div className="absolute bottom-4 left-6">
-                              <h4 className="text-xl font-bold tracking-tight uppercase">{result.title}</h4>
+
+                            <div className="px-4 py-3">
+                              <p className="text-xs md:text-sm text-white/50 font-semibold leading-relaxed text-center">
+                                {result.narration}
+                              </p>
                             </div>
-                          </div>
-                          
-                          <div className="max-w-2xl mx-auto text-center px-4">
-                            <p className="text-sm md:text-lg text-white/50 font-light leading-relaxed tracking-wide italic">
-                              "{result.caption}"
-                            </p>
                           </div>
                         </motion.div>
                       </CarouselItem>
                     ))}
                   </CarouselContent>
 
-                  {/* Absolute Side Navigation - Finite Style */}
-                  <CarouselPrevious className="absolute -left-4 md:-left-16 lg:-left-24 top-1/2 -translate-y-1/2 border border-white/10 bg-black/40 backdrop-blur-md text-white/40 hover:text-white hover:bg-white/10 hover:border-white h-20 w-12 rounded-none disabled:opacity-0 transition-none" />
-                  <CarouselNext className="absolute -right-4 md:-right-16 lg:-right-24 top-1/2 -translate-y-1/2 border border-white/10 bg-black/40 backdrop-blur-md text-white/40 hover:text-white hover:bg-white/10 hover:border-white h-20 w-12 rounded-none disabled:opacity-0 transition-none" />
+                  {/* Rounded nav arrows */}
+                  <CarouselPrevious className="absolute -left-4 md:-left-12 top-1/2 border border-white/10 bg-black/60 backdrop-blur-md text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 h-14 w-14 rounded-full disabled:opacity-0 transition-none" />
+                  <CarouselNext className="absolute -right-4 md:-right-12 top-1/2 border border-white/10 bg-black/60 backdrop-blur-md text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 h-14 w-14 rounded-full disabled:opacity-0 transition-none" />
                 </div>
-                
-                {/* Visual Indicators at Bottom */}
-                <div className="flex items-center justify-center gap-2 mt-8 md:mt-12">
-                  {MOCK_RESULTS.map((_, i) => (
-                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/10" />
+
+                {/* Dot indicators */}
+                <div className="flex items-center justify-center gap-3 mt-8">
+                  {results.map((_, i) => (
+                    <div key={i} className="w-2.5 h-2.5 rounded-full bg-white/10" />
                   ))}
                 </div>
               </Carousel>
             </div>
 
-            {/* Global Watermark */}
-            <div className="fixed bottom-6 right-8 pointer-events-none text-white/5 font-mono text-[60px] font-black italic tracking-tighter select-none">
+            {/* Watermark */}
+            <div className="fixed bottom-6 right-8 pointer-events-none text-white/[0.03] font-extrabold text-5xl tracking-tighter select-none">
               MONOTRACE
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Screen Effects */}
-      <div className="fixed inset-0 pointer-events-none z-[100] opacity-[0.05]">
+      {/* Subtle noise overlay */}
+      <div className="fixed inset-0 pointer-events-none z-[100] opacity-[0.03]">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-repeat" />
       </div>
-      <div className="fixed inset-0 pointer-events-none z-[100] bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
     </div>
   );
 }
