@@ -159,32 +159,36 @@ export default function App() {
           >
             <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black z-30 pointer-events-none" />
 
-            <div className="relative h-screen flex flex-col items-center">
+            <div className="relative h-screen flex flex-col items-center overflow-hidden">
               <motion.div
-                initial={{ y: '100vh' }}
-                animate={{ y: '-250%' }}
-                transition={{ duration: 35, ease: 'linear', repeat: Infinity }}
-                className="w-full max-w-2xl px-8 flex flex-col gap-3"
+                animate={{ y: [0, '-50%'] }}
+                transition={{ duration: 20, ease: 'linear', repeat: Infinity }}
+                className="w-full max-w-2xl px-8 flex flex-col gap-3 pt-[50vh]"
               >
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="flex flex-col gap-3">
-                    {CODE_SNIPPETS.map((snippet, j) => {
-                      const colors = ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373'];
-                      const color = colors[(i + j) % colors.length];
+                {/* Render two identical blocks for seamless loop */}
+                {[0, 1].map((blockIndex) => (
+                  <div key={`block-${blockIndex}`} className="flex flex-col gap-3">
+                    {[...Array(8)].map((_, i) => (
+                      <div key={`group-${blockIndex}-${i}`} className="flex flex-col gap-3">
+                        {CODE_SNIPPETS.map((snippet, j) => {
+                          const colors = ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373'];
+                          const color = colors[(i + j) % colors.length];
 
-                      return (
-                        <div
-                          key={`${i}-${j}`}
-                          className="font-mono text-[10px] md:text-sm font-medium tracking-tight"
-                          style={{
-                            color,
-                            marginLeft: `${(j % 6) * 12}px`,
-                          }}
-                        >
-                          {snippet}
-                        </div>
-                      );
-                    })}
+                          return (
+                            <div
+                              key={`${blockIndex}-${i}-${j}`}
+                              className="font-mono text-[10px] md:text-sm font-medium tracking-tight whitespace-pre"
+                              style={{
+                                color,
+                                marginLeft: `${(j % 6) * 12}px`,
+                              }}
+                            >
+                              {snippet}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 ))}
               </motion.div>
@@ -262,13 +266,24 @@ export default function App() {
                         >
                           {/* Compact result card */}
                           <div className="bg-white/5 rounded-3xl border-2 border-white/10 overflow-hidden max-w-3xl mx-auto">
-                            <div className="relative aspect-video overflow-hidden">
-                              <img
-                                src={result.image_url}
-                                alt={`Analysis ${result.index}`}
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover"
-                              />
+                            <div className="relative aspect-video overflow-hidden bg-white/5">
+                              {result.image_url ? (
+                                <img
+                                  src={result.image_url}
+                                  alt={`Analysis ${result.index}`}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                                  <div className="w-16 h-16 mb-4 rounded-full bg-white/10 flex items-center justify-center">
+                                    <Loader2 size={24} className="text-white/40" />
+                                  </div>
+                                  <p className="text-white/60 font-medium max-w-xs">
+                                    Gambar gagal dimuat (Free tier API limit). Lanjut baca ceritanya aja ya!
+                                  </p>
+                                </div>
+                              )}
                               <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
 
                               <div className="absolute bottom-3 left-4">
