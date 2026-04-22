@@ -1,15 +1,24 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serve } from '@hono/node-server'
+import { GoogleGenAI } from '@google/genai'
 
 const app = new Hono()
 app.use('/api/*', cors())
 
-const AI_API_URL = process.env.AI_API_URL!
-const AI_API_KEY = process.env.AI_API_KEY!
+const AI_API_URL = process.env.AI_API_URL
+const STORY_API_KEY = process.env.STORY_API_KEY
+const IMAGE_API_KEYS = (process.env.IMAGE_API_KEYS || '').split(',').filter(Boolean)
+let currentImageKeyIndex = 0;
 
-if (!AI_API_URL || !AI_API_KEY) {
-  console.error('[Fatal] AI_API_URL and AI_API_KEY env vars are required.')
+function getNextImageApiKey() {
+  const key = IMAGE_API_KEYS[currentImageKeyIndex];
+  currentImageKeyIndex = (currentImageKeyIndex + 1) % IMAGE_API_KEYS.length;
+  return key;
+}
+
+if (!AI_API_URL || !STORY_API_KEY || IMAGE_API_KEYS.length === 0) {
+  console.error('[Fatal] AI_API_URL, STORY_API_KEY, and IMAGE_API_KEYS are required.')
   process.exit(1)
 }
 
@@ -90,7 +99,7 @@ async function getGithubContext(owner: string, repo: string) {
 // --- AI helpers ---
 
 async function generateStory(ctx: Awaited<ReturnType<typeof getGithubContext>> & {}) {
-  const prompt = `You are a dramatic historian telling the story of a GitHub repository as if it were an epic tale.
+  const prompt = `You are a storyteller explaining a GitHub repository to teenagers. Write the narration in casual Bahasa Indonesia.
 
 Repository: ${ctx.name}
 URL: ${ctx.url}
@@ -113,19 +122,20 @@ Using the README, figure out WHY this repository was created — what problem it
 Weave in "side stories" from the pull requests and user issues.
 
 Return ONLY a raw JSON array (no markdown fences, no explanation). Format:
-[{"index":1,"image_prompt":"cartoon black-and-white ink sketch style: description of the scene...","narration":"dramatic paragraph telling the story..."},{"index":2,...}]
+[{"index":1,"image_prompt":"make a flat vector illustration style like a duolingo cartoon: description of the scene...","narration":"short casual Indonesian text..."},{"index":2,...}]
 
 Rules:
 - Make 6 slides
-- Each image_prompt must start with "cartoon black-and-white ink sketch style:" and describe a vivid scene
-- Each narration is 2-3 dramatic sentences
+- Each image_prompt must start with "make a flat vector illustration style like a duolingo cartoon:" and describe a vivid scene
+- Narration must flow like a story. Use format like "Pada suatu hari, ...", "Namun sayangnya, ...", "Akhirnya, ...", "Dan sejak saat itu, ...".
+- Each narration is 1-2 short sentences in casual Bahasa Indonesia (easy for teens to understand).
 - Story arc: problem discovery → struggle → solution → community → legacy`
 
   const res = await fetch(AI_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${AI_API_KEY}`,
+      Authorization: `Bearer ${STORY_API_KEY}`,
     },
     body: JSON.stringify({
       model: 'gemini-2.5-flash',
@@ -157,40 +167,53 @@ Rules:
   return parsed
 }
 
-async function generateImage(imagePrompt: string, slideIndex: number): Promise<string> {
-  console.log(`[AI:Image] Generating image for slide #${slideIndex}...`)
-  const res = await fetch(AI_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${AI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'gemini-3.1-flash-image',
-      messages: [{ role: 'user', content: imagePrompt }],
-    }),
-  })
+async function generateImage(imagePrompt: string, slideIndex: number, attempt = 1): Promise<string> {
+  const maxAttempts = 3;
+  console.log(`[AI:Image] Generating image for slide #${slideIndex} (Attempt ${attempt}/${maxAttempts})...`)
 
-  if (!res.ok) {
-    console.error(`[AI:Image] Slide #${slideIndex} failed with status ${res.status}`)
-    return ''
+  try {
+    const ai = new GoogleGenAI({
+      apiKey: getNextImageApiKey(),
+    });
+
+    const config = {
+      responseModalities: ['IMAGE' as const],
+    };
+
+    // Explicitly ask for 16:9 ratio in the prompt
+    const finalPrompt = `${imagePrompt}\n\nIMPORTANT: Generate image in 16:9 aspect ratio.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image', // Keep existing model name but use SDK
+      config,
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: finalPrompt }],
+        },
+      ],
+    });
+
+    if (response.candidates?.[0]?.content?.parts?.[0]?.inlineData) {
+      const inlineData = response.candidates[0].content.parts[0].inlineData;
+      const cleanContent = typeof inlineData.data === 'string' ? inlineData.data.replace(/\s+/g, '') : '';
+      console.log(`[AI:Image] Slide #${slideIndex} got image content (${cleanContent.length} chars)`)
+      return `data:${inlineData.mimeType};base64,${cleanContent}`;
+    }
+
+    console.warn(`[AI:Image] Slide #${slideIndex} returned no inlineData`);
+    throw new Error('No inlineData returned');
+  } catch (err) {
+    console.error(`[AI:Image] Slide #${slideIndex} failed (Attempt ${attempt}/${maxAttempts}):`, err instanceof Error ? err.message : err);
+
+    if (attempt < maxAttempts) {
+      console.log(`[AI:Image] Slide #${slideIndex} waiting 10s before retry...`);
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      return generateImage(imagePrompt, slideIndex, attempt + 1);
+    }
+
+    return '';
   }
-  const data = await res.json()
-  const content = data.choices?.[0]?.message?.content
-
-  if (!content) {
-    console.warn(`[AI:Image] Slide #${slideIndex} returned empty content`)
-    return ''
-  }
-
-  // If content is base64 image data, wrap as data URL
-  if (typeof content === 'string' && /^[A-Za-z0-9+/=]+$/.test(content) && content.length > 200) {
-    console.log(`[AI:Image] Slide #${slideIndex} got base64 image (${content.length} chars)`)
-    return `data:image/png;base64,${content}`
-  }
-
-  console.log(`[AI:Image] Slide #${slideIndex} got URL/image (${content.slice(0, 80)}...)`)
-  return content
 }
 
 // --- Route ---
